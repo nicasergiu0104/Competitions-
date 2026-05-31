@@ -1,5 +1,6 @@
 package com.csee.competitions.entities;
-
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.persistence.*;
 
 @Entity
@@ -29,4 +30,10 @@ public class User {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+    @OneToMany(mappedBy = "student")
+    private List<Application> applications = new ArrayList<>();
+
+    public List<Application> getApplications() { return applications; }
+    public void setApplications(List<Application> applications) { this.applications = applications; }
+
 }

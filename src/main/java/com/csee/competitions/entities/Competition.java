@@ -37,6 +37,11 @@ public class Competition {
     @ManyToMany
     @JoinTable(name = "competition_categories")
     private List<Category> categories = new ArrayList<>();
+    @OneToMany(mappedBy = "competition", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ApplicationFieldDefinition> fieldDefinitions = new ArrayList<>();
+
+    public List<ApplicationFieldDefinition> getFieldDefinitions() { return fieldDefinitions; }
+    public void setFieldDefinitions(List<ApplicationFieldDefinition> fieldDefinitions) { this.fieldDefinitions = fieldDefinitions; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
