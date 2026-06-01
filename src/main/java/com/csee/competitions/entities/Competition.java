@@ -24,7 +24,10 @@ public class Competition {
 
     private int minParticipants;
     private int maxParticipants;
+    private boolean publishScores;
 
+    public boolean isPublishScores() { return publishScores; }
+    public void setPublishScores(boolean publishScores) { this.publishScores = publishScores; }
     private boolean internal;
 
     @Enumerated(EnumType.STRING)

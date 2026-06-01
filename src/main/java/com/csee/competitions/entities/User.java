@@ -18,7 +18,24 @@ public class User {
     private String email;
 
     private String password;
+    private String fullName;
+    private Integer studyYear;
+    private String studyProgram;
 
+    @Column(length = 1000)
+    private String bio;
+
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
+
+    public Integer getStudyYear() { return studyYear; }
+    public void setStudyYear(Integer studyYear) { this.studyYear = studyYear; }
+
+    public String getStudyProgram() { return studyProgram; }
+    public void setStudyProgram(String studyProgram) { this.studyProgram = studyProgram; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
