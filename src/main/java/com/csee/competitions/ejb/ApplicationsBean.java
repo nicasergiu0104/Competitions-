@@ -12,6 +12,10 @@ import java.util.Map;
 import java.util.logging.Logger;
 import java.util.ArrayList;
 import com.csee.competitions.common.ScoreDto;
+import com.csee.competitions.common.MyApplicationDto;
+import com.csee.competitions.entities.Competition;
+import com.csee.competitions.entities.Tag;
+import com.csee.competitions.entities.Category;
 
 
 @Stateless
@@ -151,7 +155,7 @@ public class ApplicationsBean {
         }
     }
 
-    public List<ScoreDto> findResults(Long competitionId) {
+    public List<ScoreDto> findResults(Long competitionId, String currentUsername) {
         List<Application> apps = entityManager.createQuery(
                         "SELECT a FROM Application a WHERE a.competition.id = :cid AND a.score IS NOT NULL " +
                                 "ORDER BY a.score DESC", Application.class)
@@ -159,9 +163,51 @@ public class ApplicationsBean {
                 .getResultList();
         List<ScoreDto> results = new ArrayList<>();
         for (Application a : apps) {
-            results.add(new ScoreDto(a.getScore(), a.isWinner()));
+            boolean mine = currentUsername != null
+                    && currentUsername.equals(a.getStudent().getUsername());
+            results.add(new ScoreDto(anonCode(a.getId()), a.getScore(), a.isWinner(), mine));
         }
         return results;
     }
+
+    private String anonCode(Long applicationId) {
+        int h = ("competitions" + applicationId).hashCode() & 0xFFFF;
+        return "Participant " + String.format("%04X", h);
+    }
+
+    public void withdraw(Long competitionId, String username) {
+        LOG.info("withdraw");
+        try {
+            List<Application> apps = entityManager.createQuery(
+                            "SELECT a FROM Application a WHERE a.competition.id = :cid AND a.student.username = :u",
+                            Application.class)
+                    .setParameter("cid", competitionId)
+                    .setParameter("u", username)
+                    .getResultList();
+            for (Application a : apps) {
+                entityManager.remove(a);
+            }
+        } catch (Exception ex) {
+            throw new EJBException(ex);
+        }
+    }
+
+    public List<MyApplicationDto> findMyApplications(String username) {
+        LOG.info("findMyApplications");
+        List<Application> apps = entityManager.createQuery(
+                        "SELECT a FROM Application a WHERE a.student.username = :u ORDER BY a.appliedAt DESC",
+                        Application.class)
+                .setParameter("u", username)
+                .getResultList();
+        List<MyApplicationDto> dtos = new ArrayList<>();
+        for (Application a : apps) {
+            Competition c = a.getCompetition();
+            dtos.add(new MyApplicationDto(
+                    c.getId(), c.getTitle(), c.getStatus(),
+                    a.getStatus(), a.getScore(), a.isWinner(), a.getAppliedAt()));
+        }
+        return dtos;
+    }
+
 
 }

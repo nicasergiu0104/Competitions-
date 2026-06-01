@@ -3,6 +3,7 @@ package com.csee.competitions.servlets;
 import com.csee.competitions.common.CompetitionDto;
 import com.csee.competitions.ejb.ApplicationRuleException;
 import com.csee.competitions.ejb.ApplicationsBean;
+import com.csee.competitions.ejb.CompetitionPhotosBean;
 import com.csee.competitions.ejb.CompetitionsBean;
 import com.csee.competitions.entities.ApplicationStatus;
 import jakarta.annotation.security.DeclareRoles;
@@ -29,22 +30,29 @@ public class CompetitionDetail extends HttpServlet {
     @Inject
     private ApplicationsBean applicationsBean;
 
+    @Inject
+    private CompetitionPhotosBean photosBean;
+
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         Long id = Long.parseLong(request.getParameter("id"));
         request.setAttribute("competition", competitionsBean.findCompetitionById(id));
         request.setAttribute("fieldDefinitions", competitionsBean.findFieldDefinitions(id));
+        request.setAttribute("photos", photosBean.findPhotos(id));
+        request.setAttribute("tags", competitionsBean.findTagNames(id));
+        request.setAttribute("categories", competitionsBean.findCategoryNames(id));
+
+        if (competitionsBean.isScoresPublished(id)) {
+            request.setAttribute("publishedScores", applicationsBean.findResults(id, request.getRemoteUser()));
+        }
 
         String username = request.getRemoteUser();
         if (username != null && request.isUserInRole("STUDENT")) {
             request.setAttribute("applicationStatus", applicationsBean.findStatus(id, username));
         }
         request.getRequestDispatcher("/WEB-INF/pages/competitionDetail.jsp").forward(request, response);
-        if (competitionsBean.isScoresPublished(id)) {
-            request.setAttribute("publishedScores", applicationsBean.findResults(id));
-        }
-
     }
 
     @Override
@@ -52,6 +60,12 @@ public class CompetitionDetail extends HttpServlet {
             throws ServletException, IOException {
         Long id = Long.parseLong(request.getParameter("id"));
         String username = request.getRemoteUser();
+
+        if ("withdraw".equals(request.getParameter("action"))) {
+            applicationsBean.withdraw(id, username);
+            response.sendRedirect(request.getContextPath() + "/CompetitionDetail?id=" + id + "&withdrawn=true");
+            return;
+        }
 
         java.util.Map<Long, String> answers = new java.util.HashMap<>();
         for (com.csee.competitions.common.FieldDefinitionDto def : competitionsBean.findFieldDefinitions(id)) {

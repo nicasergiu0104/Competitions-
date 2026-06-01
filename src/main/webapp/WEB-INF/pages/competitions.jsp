@@ -9,8 +9,41 @@
     </c:if>
   </div>
 
+  <c:url var="upcomingUrl" value="/Competitions">
+    <c:param name="view" value="upcoming"/>
+    <c:param name="q" value="${q}"/>
+  </c:url>
+  <c:url var="pastUrl" value="/Competitions">
+    <c:param name="view" value="past"/>
+    <c:param name="q" value="${q}"/>
+  </c:url>
+
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <a class="nav-link ${view == 'upcoming' ? 'active' : ''}" href="${upcomingUrl}">Upcoming</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link ${view == 'past' ? 'active' : ''}" href="${pastUrl}">Past</a>
+    </li>
+  </ul>
+
+  <form method="GET" action="${pageContext.request.contextPath}/Competitions" class="row g-2 mb-4" style="max-width: 560px;">
+    <input type="hidden" name="view" value="${view}">
+    <div class="col">
+      <input type="text" name="q" class="form-control" placeholder="Search by title or description..." value="${q}">
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-secondary">Search</button>
+    </div>
+    <c:if test="${not empty q}">
+      <div class="col-auto">
+        <a href="${pageContext.request.contextPath}/Competitions?view=${view}" class="btn btn-link">Clear</a>
+      </div>
+    </c:if>
+  </form>
+
   <c:if test="${empty competitions}">
-    <div class="alert alert-info">No competitions yet.</div>
+    <div class="alert alert-info">No competitions found.</div>
   </c:if>
 
   <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
@@ -45,4 +78,30 @@
       </div>
     </c:forEach>
   </div>
+
+  <c:if test="${totalPages > 1}">
+    <c:url var="prevUrl" value="/Competitions">
+      <c:param name="view" value="${view}"/>
+      <c:param name="q" value="${q}"/>
+      <c:param name="page" value="${page - 1}"/>
+    </c:url>
+    <c:url var="nextUrl" value="/Competitions">
+      <c:param name="view" value="${view}"/>
+      <c:param name="q" value="${q}"/>
+      <c:param name="page" value="${page + 1}"/>
+    </c:url>
+    <nav class="mt-4">
+      <ul class="pagination justify-content-center">
+        <li class="page-item ${page == 0 ? 'disabled' : ''}">
+          <a class="page-link" href="${prevUrl}">Previous</a>
+        </li>
+        <li class="page-item disabled">
+          <span class="page-link">Page ${page + 1} of ${totalPages}</span>
+        </li>
+        <li class="page-item ${page + 1 >= totalPages ? 'disabled' : ''}">
+          <a class="page-link" href="${nextUrl}">Next</a>
+        </li>
+      </ul>
+    </nav>
+  </c:if>
 </t:pageTemplate>

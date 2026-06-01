@@ -23,6 +23,11 @@
                         </li>
                     </c:when>
                     <c:otherwise>
+                        <c:if test="${pageContext.request.isUserInRole('STUDENT')}">
+                            <li class="nav-item">
+                                <a class="nav-link" href="${pageContext.request.contextPath}/MyApplications">My Applications</a>
+                            </li>
+                        </c:if>
                         <li class="nav-item">
                             <a class="nav-link" href="${pageContext.request.contextPath}/Profile">Profile</a>
                         </li>

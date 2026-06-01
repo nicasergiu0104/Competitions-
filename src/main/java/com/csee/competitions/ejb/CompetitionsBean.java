@@ -1,7 +1,7 @@
 package com.csee.competitions.ejb;
 
 import com.csee.competitions.common.CompetitionDto;
-import com.csee.competitions.entities.Competition;
+import com.csee.competitions.entities.*;
 import jakarta.ejb.EJBException;
 import jakarta.ejb.Stateless;
 import jakarta.persistence.EntityManager;
@@ -11,9 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 import com.csee.competitions.common.FieldDefinitionDto;
-import com.csee.competitions.entities.ApplicationFieldDefinition;
-import com.csee.competitions.entities.Application;
-import com.csee.competitions.entities.CompetitionStatus;
+
+import java.time.LocalDateTime;
+
+
 @Stateless
 public class CompetitionsBean {
 
@@ -80,7 +81,6 @@ public class CompetitionsBean {
         try {
             Competition c = entityManager.find(Competition.class, id);
             if (c != null) {
-                // remove applications first (each cascades to its answer values)
                 List<Application> apps = entityManager.createQuery(
                                 "SELECT a FROM Application a WHERE a.competition.id = :id", Application.class)
                         .setParameter("id", id)
@@ -88,9 +88,10 @@ public class CompetitionsBean {
                 for (Application a : apps) {
                     entityManager.remove(a);
                 }
-                entityManager.flush(); // make those deletes happen before we remove the competition
-
-                // the competition's field definitions cascade-delete with it
+                entityManager.createQuery("DELETE FROM CompetitionPhoto p WHERE p.competition.id = :id")
+                        .setParameter("id", id)
+                        .executeUpdate();
+                entityManager.flush();
                 entityManager.remove(c);
             }
         } catch (Exception ex) {
@@ -163,6 +164,135 @@ public class CompetitionsBean {
     public boolean isScoresPublished(Long id) {
         Competition c = entityManager.find(Competition.class, id);
         return c != null && c.isPublishScores();
+    }
+
+    public List<CompetitionDto> findCompetitions(boolean past, String search, int page, int pageSize) {
+        String jpql = "SELECT c FROM Competition c WHERE " + dateCondition(past);
+        if (search != null && !search.isBlank()) {
+            jpql += " AND (LOWER(c.title) LIKE :q OR LOWER(c.description) LIKE :q)";
+        }
+        jpql += past ? " ORDER BY c.applicationDeadline DESC" : " ORDER BY c.applicationDeadline ASC";
+
+        TypedQuery<Competition> query = entityManager.createQuery(jpql, Competition.class);
+        query.setParameter("now", LocalDateTime.now());
+        query.setParameter("completed", CompetitionStatus.COMPLETED);
+        if (search != null && !search.isBlank()) {
+            query.setParameter("q", "%" + search.toLowerCase() + "%");
+        }
+        query.setFirstResult(page * pageSize);
+        query.setMaxResults(pageSize);
+
+        List<CompetitionDto> dtos = new ArrayList<>();
+        for (Competition c : query.getResultList()) {
+            dtos.add(toDto(c));
+        }
+        return dtos;
+    }
+
+    public long countCompetitions(boolean past, String search) {
+        String jpql = "SELECT COUNT(c) FROM Competition c WHERE " + dateCondition(past);
+        if (search != null && !search.isBlank()) {
+            jpql += " AND (LOWER(c.title) LIKE :q OR LOWER(c.description) LIKE :q)";
+        }
+        TypedQuery<Long> query = entityManager.createQuery(jpql, Long.class);
+        query.setParameter("now", LocalDateTime.now());
+        query.setParameter("completed", CompetitionStatus.COMPLETED);
+        if (search != null && !search.isBlank()) {
+            query.setParameter("q", "%" + search.toLowerCase() + "%");
+        }
+        return query.getSingleResult();
+    }
+
+    private String dateCondition(boolean past) {
+        return past
+                ? "(c.status = :completed OR c.applicationDeadline < :now)"
+                : "(c.status <> :completed AND (c.applicationDeadline IS NULL OR c.applicationDeadline >= :now))";
+    }
+
+    public List<String> findTagNames(Long competitionId) {
+        Competition c = entityManager.find(Competition.class, competitionId);
+        List<String> names = new ArrayList<>();
+        if (c != null) {
+            for (Tag t : c.getTags()) names.add(t.getName());
+        }
+        return names;
+    }
+
+    public List<String> findCategoryNames(Long competitionId) {
+        Competition c = entityManager.find(Competition.class, competitionId);
+        List<String> names = new ArrayList<>();
+        if (c != null) {
+            for (Category cat : c.getCategories()) names.add(cat.getName());
+        }
+        return names;
+    }
+
+    public void addTag(Long competitionId, String name) {
+        LOG.info("addTag");
+        try {
+            if (name == null || name.trim().isEmpty()) return;
+            String trimmed = name.trim();
+            Competition c = entityManager.find(Competition.class, competitionId);
+            boolean exists = c.getTags().stream().anyMatch(t -> t.getName().equalsIgnoreCase(trimmed));
+            if (!exists) c.getTags().add(findOrCreateTag(trimmed));
+        } catch (Exception ex) {
+            throw new EJBException(ex);
+        }
+    }
+
+    public void removeTag(Long competitionId, String name) {
+        LOG.info("removeTag");
+        try {
+            Competition c = entityManager.find(Competition.class, competitionId);
+            c.getTags().removeIf(t -> t.getName().equalsIgnoreCase(name));
+        } catch (Exception ex) {
+            throw new EJBException(ex);
+        }
+    }
+
+    public void addCategory(Long competitionId, String name) {
+        LOG.info("addCategory");
+        try {
+            if (name == null || name.trim().isEmpty()) return;
+            String trimmed = name.trim();
+            Competition c = entityManager.find(Competition.class, competitionId);
+            boolean exists = c.getCategories().stream().anyMatch(cat -> cat.getName().equalsIgnoreCase(trimmed));
+            if (!exists) c.getCategories().add(findOrCreateCategory(trimmed));
+        } catch (Exception ex) {
+            throw new EJBException(ex);
+        }
+    }
+
+    public void removeCategory(Long competitionId, String name) {
+        LOG.info("removeCategory");
+        try {
+            Competition c = entityManager.find(Competition.class, competitionId);
+            c.getCategories().removeIf(cat -> cat.getName().equalsIgnoreCase(name));
+        } catch (Exception ex) {
+            throw new EJBException(ex);
+        }
+    }
+
+    private Tag findOrCreateTag(String name) {
+        List<Tag> found = entityManager.createQuery(
+                        "SELECT t FROM Tag t WHERE LOWER(t.name) = LOWER(:n)", Tag.class)
+                .setParameter("n", name).getResultList();
+        if (!found.isEmpty()) return found.get(0);
+        Tag t = new Tag();
+        t.setName(name);
+        entityManager.persist(t);
+        return t;
+    }
+
+    private Category findOrCreateCategory(String name) {
+        List<Category> found = entityManager.createQuery(
+                        "SELECT c FROM Category c WHERE LOWER(c.name) = LOWER(:n)", Category.class)
+                .setParameter("n", name).getResultList();
+        if (!found.isEmpty()) return found.get(0);
+        Category c = new Category();
+        c.setName(name);
+        entityManager.persist(c);
+        return c;
     }
 
 }
