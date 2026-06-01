@@ -32,9 +32,9 @@ public class Competitions extends HttpServlet {
         boolean past = "past".equals(request.getParameter("view"));
         String q = request.getParameter("q");
         int page = parsePage(request.getParameter("page"));
-
-        List<CompetitionDto> competitions = competitionsBean.findCompetitions(past, q, page, PAGE_SIZE);
-        long total = competitionsBean.countCompetitions(past, q);
+        String tag = request.getParameter("tag");
+        List<CompetitionDto> competitions = competitionsBean.findCompetitions(past, q, tag, page, PAGE_SIZE);
+        long total = competitionsBean.countCompetitions(past, q, tag);
         int totalPages = (int) Math.ceil((double) total / PAGE_SIZE);
 
         request.setAttribute("competitions", competitions);
@@ -42,6 +42,8 @@ public class Competitions extends HttpServlet {
         request.setAttribute("q", q);
         request.setAttribute("page", page);
         request.setAttribute("totalPages", totalPages);
+        request.setAttribute("tagFilter", tag == null ? "" : tag);
+        request.setAttribute("allTags", competitionsBean.findAllTagNames());
         request.getRequestDispatcher("/WEB-INF/pages/competitions.jsp").forward(request, response);
     }
 

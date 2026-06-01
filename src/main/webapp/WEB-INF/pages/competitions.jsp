@@ -12,10 +12,12 @@
   <c:url var="upcomingUrl" value="/Competitions">
     <c:param name="view" value="upcoming"/>
     <c:param name="q" value="${q}"/>
+    <c:param name="tag" value="${tagFilter}"/>
   </c:url>
   <c:url var="pastUrl" value="/Competitions">
     <c:param name="view" value="past"/>
     <c:param name="q" value="${q}"/>
+    <c:param name="tag" value="${tagFilter}"/>
   </c:url>
 
   <ul class="nav nav-tabs mb-3">
@@ -27,8 +29,9 @@
     </li>
   </ul>
 
-  <form method="GET" action="${pageContext.request.contextPath}/Competitions" class="row g-2 mb-4" style="max-width: 560px;">
+  <form method="GET" action="${pageContext.request.contextPath}/Competitions" class="row g-2 mb-3" style="max-width: 560px;">
     <input type="hidden" name="view" value="${view}">
+    <input type="hidden" name="tag" value="${tagFilter}">
     <div class="col">
       <input type="text" name="q" class="form-control" placeholder="Search by title or description..." value="${q}">
     </div>
@@ -37,10 +40,35 @@
     </div>
     <c:if test="${not empty q}">
       <div class="col-auto">
-        <a href="${pageContext.request.contextPath}/Competitions?view=${view}" class="btn btn-link">Clear</a>
+        <c:url var="clearSearchUrl" value="/Competitions">
+          <c:param name="view" value="${view}"/>
+          <c:param name="tag" value="${tagFilter}"/>
+        </c:url>
+        <a href="${clearSearchUrl}" class="btn btn-link">Clear</a>
       </div>
     </c:if>
   </form>
+
+  <c:if test="${not empty allTags}">
+    <div class="mb-4 d-flex flex-wrap gap-2 align-items-center">
+      <span class="text-muted small me-1">Filter by tag:</span>
+      <c:url var="allTagsUrl" value="/Competitions">
+        <c:param name="view" value="${view}"/>
+        <c:param name="q" value="${q}"/>
+      </c:url>
+      <a href="${allTagsUrl}"
+         class="btn btn-sm ${empty tagFilter ? 'btn-primary' : 'btn-outline-secondary'}">All</a>
+      <c:forEach var="tagName" items="${allTags}">
+        <c:url var="tagUrl" value="/Competitions">
+          <c:param name="view" value="${view}"/>
+          <c:param name="q" value="${q}"/>
+          <c:param name="tag" value="${tagName}"/>
+        </c:url>
+        <a href="${tagUrl}"
+           class="btn btn-sm ${tagFilter == tagName ? 'btn-primary' : 'btn-outline-secondary'}">${tagName}</a>
+      </c:forEach>
+    </div>
+  </c:if>
 
   <c:if test="${empty competitions}">
     <div class="alert alert-info">No competitions found.</div>
@@ -83,11 +111,13 @@
     <c:url var="prevUrl" value="/Competitions">
       <c:param name="view" value="${view}"/>
       <c:param name="q" value="${q}"/>
+      <c:param name="tag" value="${tagFilter}"/>
       <c:param name="page" value="${page - 1}"/>
     </c:url>
     <c:url var="nextUrl" value="/Competitions">
       <c:param name="view" value="${view}"/>
       <c:param name="q" value="${q}"/>
+      <c:param name="tag" value="${tagFilter}"/>
       <c:param name="page" value="${page + 1}"/>
     </c:url>
     <nav class="mt-4">

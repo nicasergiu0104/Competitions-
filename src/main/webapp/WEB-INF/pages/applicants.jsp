@@ -1,31 +1,50 @@
 <%@ page contentType="text/html;charset=UTF-8" %>
 <%@ taglib prefix="t" tagdir="/WEB-INF/tags" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <t:pageTemplate pageTitle="Applicants">
-  <a href="${pageContext.request.contextPath}/CompetitionDetail?id=${competition.id}"
-     class="btn btn-link px-0 mb-3">&larr; Back to competition</a>
 
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Applicants — ${competition.title}</h1>
+  <style>
+    .applicant-avatar { width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Bricolage Grotesque',sans-serif; font-weight:800; color:#fff; background:linear-gradient(135deg, var(--cobalt), var(--coral)); flex:0 0 auto; }
+    .winner-card { border-left:4px solid var(--coral); }
+    .section-label { font-family:'Bricolage Grotesque', sans-serif; font-weight:700; letter-spacing:-.01em; }
+    .answers-dl dt { color: var(--ink-soft); font-weight:600; }
+    .answers-dl dd { margin-bottom:.4rem; }
+    .count-pill { background: rgba(45,78,245,.1); color: var(--cobalt-dark); font-weight:600; border-radius:.6rem; padding:.3rem .65rem; font-size:.85rem; }
+  </style>
+
+  <a href="${pageContext.request.contextPath}/CompetitionDetail?id=${competition.id}"
+     class="btn btn-link px-0 mb-2">&larr; Back to competition</a>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div class="d-flex align-items-center gap-3">
+      <h1 class="mb-0">Applicants</h1>
+      <span class="count-pill">${fn:length(applications)} total</span>
+    </div>
     <span class="badge bg-secondary fs-6">${competition.status}</span>
   </div>
+  <p class="text-muted mb-4">${competition.title}</p>
 
-  <div class="d-flex gap-2 mb-4">
-    <c:if test="${competition.status != 'COMPLETED'}">
-      <form method="POST" action="${pageContext.request.contextPath}/CompetitionApplicants"
-            onsubmit="return confirm('Mark this competition as complete?');">
+  <div class="card mb-4">
+    <div class="card-body d-flex flex-wrap gap-2">
+      <a href="${pageContext.request.contextPath}/CompetitionApplicants?id=${competition.id}&export=csv"
+         class="btn btn-outline-primary">Download CSV</a>
+      <c:if test="${competition.status != 'COMPLETED'}">
+        <form method="POST" action="${pageContext.request.contextPath}/CompetitionApplicants"
+              onsubmit="return confirm('Mark this competition as complete?');">
+          <input type="hidden" name="competition_id" value="${competition.id}">
+          <input type="hidden" name="action" value="complete">
+          <button class="btn btn-dark">Mark complete</button>
+        </form>
+      </c:if>
+      <form method="POST" action="${pageContext.request.contextPath}/CompetitionApplicants">
         <input type="hidden" name="competition_id" value="${competition.id}">
-        <input type="hidden" name="action" value="complete">
-        <button class="btn btn-dark">Mark complete</button>
+        <input type="hidden" name="action" value="${scoresPublished ? 'unpublish' : 'publish'}">
+        <button class="btn btn-outline-secondary">
+            ${scoresPublished ? 'Unpublish anonymized scores' : 'Publish anonymized scores'}
+        </button>
       </form>
-    </c:if>
-    <form method="POST" action="${pageContext.request.contextPath}/CompetitionApplicants">
-      <input type="hidden" name="competition_id" value="${competition.id}">
-      <input type="hidden" name="action" value="${scoresPublished ? 'unpublish' : 'publish'}">
-      <button class="btn btn-outline-secondary">
-          ${scoresPublished ? 'Unpublish anonymized scores' : 'Publish anonymized scores'}
-      </button>
-    </form>
+    </div>
   </div>
 
   <c:if test="${empty applications}">
@@ -33,28 +52,36 @@
   </c:if>
 
   <c:forEach var="app" items="${applications}">
-    <div class="card mb-3">
+    <div class="card mb-3 ${app.winner ? 'winner-card' : ''}">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <h5 class="mb-0">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <div class="applicant-avatar">
               <c:choose>
-                <c:when test="${not empty app.fullName}">${app.fullName}</c:when>
-                <c:otherwise>${app.username}</c:otherwise>
+                <c:when test="${not empty app.fullName}">${app.fullName.substring(0,1).toUpperCase()}</c:when>
+                <c:otherwise>${app.username.substring(0,1).toUpperCase()}</c:otherwise>
               </c:choose>
-              <c:if test="${app.winner}"><span class="badge bg-warning text-dark ms-2">Winner</span></c:if>
-            </h5>
-            <div class="text-muted small">
-                ${app.email}
-              <c:if test="${not empty app.studyProgram}"> · ${app.studyProgram}</c:if>
-              <c:if test="${not empty app.studyYear}"> · Year ${app.studyYear}</c:if>
+            </div>
+            <div>
+              <h5 class="mb-0 section-label">
+                <c:choose>
+                  <c:when test="${not empty app.fullName}">${app.fullName}</c:when>
+                  <c:otherwise>${app.username}</c:otherwise>
+                </c:choose>
+                <c:if test="${app.winner}"><span class="badge bg-warning text-dark ms-2">Winner</span></c:if>
+              </h5>
+              <div class="text-muted small">
+                  ${app.email}
+                <c:if test="${not empty app.studyProgram}"> · ${app.studyProgram}</c:if>
+                <c:if test="${not empty app.studyYear}"> · Year ${app.studyYear}</c:if>
+              </div>
             </div>
           </div>
           <span class="badge ${app.status == 'ACCEPTED' ? 'bg-success' : (app.status == 'REJECTED' ? 'bg-danger' : 'bg-secondary')}">${app.status}</span>
         </div>
 
         <c:if test="${not empty app.answers}">
-          <dl class="row mt-3 mb-0">
+          <dl class="row mt-3 mb-0 answers-dl">
             <c:forEach var="ans" items="${app.answers}">
               <dt class="col-sm-3">${ans.label}</dt>
               <dd class="col-sm-9">${ans.value}</dd>

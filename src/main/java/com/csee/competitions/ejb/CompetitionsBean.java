@@ -166,11 +166,15 @@ public class CompetitionsBean {
         return c != null && c.isPublishScores();
     }
 
-    public List<CompetitionDto> findCompetitions(boolean past, String search, int page, int pageSize) {
-        String jpql = "SELECT c FROM Competition c WHERE " + dateCondition(past);
+    public List<CompetitionDto> findCompetitions(boolean past, String search, String tag, int page, int pageSize) {
+        boolean hasTag = tag != null && !tag.isBlank();
+        String jpql = "SELECT c FROM Competition c";
+        if (hasTag) jpql += " JOIN c.tags t";
+        jpql += " WHERE " + dateCondition(past);
         if (search != null && !search.isBlank()) {
             jpql += " AND (LOWER(c.title) LIKE :q OR LOWER(c.description) LIKE :q)";
         }
+        if (hasTag) jpql += " AND LOWER(t.name) = LOWER(:tag)";
         jpql += past ? " ORDER BY c.applicationDeadline DESC" : " ORDER BY c.applicationDeadline ASC";
 
         TypedQuery<Competition> query = entityManager.createQuery(jpql, Competition.class);
@@ -179,6 +183,7 @@ public class CompetitionsBean {
         if (search != null && !search.isBlank()) {
             query.setParameter("q", "%" + search.toLowerCase() + "%");
         }
+        if (hasTag) query.setParameter("tag", tag);
         query.setFirstResult(page * pageSize);
         query.setMaxResults(pageSize);
 
@@ -189,17 +194,23 @@ public class CompetitionsBean {
         return dtos;
     }
 
-    public long countCompetitions(boolean past, String search) {
-        String jpql = "SELECT COUNT(c) FROM Competition c WHERE " + dateCondition(past);
+    public long countCompetitions(boolean past, String search, String tag) {
+        boolean hasTag = tag != null && !tag.isBlank();
+        String jpql = "SELECT COUNT(DISTINCT c) FROM Competition c";
+        if (hasTag) jpql += " JOIN c.tags t";
+        jpql += " WHERE " + dateCondition(past);
         if (search != null && !search.isBlank()) {
             jpql += " AND (LOWER(c.title) LIKE :q OR LOWER(c.description) LIKE :q)";
         }
+        if (hasTag) jpql += " AND LOWER(t.name) = LOWER(:tag)";
+
         TypedQuery<Long> query = entityManager.createQuery(jpql, Long.class);
         query.setParameter("now", LocalDateTime.now());
         query.setParameter("completed", CompetitionStatus.COMPLETED);
         if (search != null && !search.isBlank()) {
             query.setParameter("q", "%" + search.toLowerCase() + "%");
         }
+        if (hasTag) query.setParameter("tag", tag);
         return query.getSingleResult();
     }
 
@@ -293,6 +304,12 @@ public class CompetitionsBean {
         c.setName(name);
         entityManager.persist(c);
         return c;
+    }
+
+    public List<String> findAllTagNames() {
+        return entityManager.createQuery(
+                        "SELECT t.name FROM Tag t ORDER BY t.name", String.class)
+                .getResultList();
     }
 
 }
